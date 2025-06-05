@@ -74,19 +74,19 @@ parser.add_argument('--video-name',
                     type=str)
 parser.add_argument('--out-dir',
                     help='output folder',
-                    default='',
+                    default='./output',
                     type=str)
-parser.add_argument('--save-pk', default=False, dest='save_pk',
+parser.add_argument('--save-pk', default=True, dest='save_pk',
                     help='save prediction', action='store_true')
-parser.add_argument('--save-img', default=False, dest='save_img',
+parser.add_argument('--save-img', default=True, dest='save_img',
                     help='save prediction', action='store_true')
 
 
 opt = parser.parse_args()
 
 
-cfg_file = 'configs/256x192_adam_lr1e-3-hrw48_cam_2x_w_pw3d_3dhp.yaml'
-CKPT = './pretrained_models/hybrik_hrnet.pth'
+cfg_file = 'configs/256x192_adam_lr1e-3-hrw48_cam_2x_wo_pw3d.yaml'
+CKPT = './pretrained_models/hybrik_hrnet48_wo3dpw.pth'
 cfg = update_config(cfg_file)
 
 bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
@@ -151,21 +151,24 @@ hybrik_model.eval()
 
 print('### Extract Image...')
 video_basename = os.path.basename(opt.video_name).split('.')[0]
+savefolder = os.path.join(opt.out_dir, video_basename)
 
 if not os.path.exists(opt.out_dir):
     os.makedirs(opt.out_dir)
-if not os.path.exists(os.path.join(opt.out_dir, 'raw_images')):
-    os.makedirs(os.path.join(opt.out_dir, 'raw_images'))
-if not os.path.exists(os.path.join(opt.out_dir, 'res_images')) and opt.save_img:
-    os.makedirs(os.path.join(opt.out_dir, 'res_images'))
-if not os.path.exists(os.path.join(opt.out_dir, 'res_2d_images')) and opt.save_img:
-    os.makedirs(os.path.join(opt.out_dir, 'res_2d_images'))
+if not os.path.exists(savefolder):
+    os.makedirs(savefolder)
+if not os.path.exists(os.path.join(savefolder, 'raw_images')):
+    os.makedirs(os.path.join(savefolder, 'raw_images'))
+if not os.path.exists(os.path.join(savefolder, 'res_images')) and opt.save_img:
+    os.makedirs(os.path.join(savefolder, 'res_images'))
+if not os.path.exists(os.path.join(savefolder, 'res_2d_images')) and opt.save_img:
+    os.makedirs(os.path.join(savefolder, 'res_2d_images'))
 
 _, info, _ = get_video_info(opt.video_name)
 video_basename = os.path.basename(opt.video_name).split('.')[0]
 
-savepath = f'./{opt.out_dir}/res_{video_basename}.mp4'
-savepath2d = f'./{opt.out_dir}/res_2d_{video_basename}.mp4'
+savepath = f'./{savefolder}/res_{video_basename}.mp4'
+savepath2d = f'./{savefolder}/res_2d_{video_basename}.mp4'
 info['savepath'] = savepath
 info['savepath2d'] = savepath2d
 
@@ -188,10 +191,10 @@ if not write_stream.isOpened():
 assert write_stream.isOpened(), 'Cannot open video for writing'
 assert write2d_stream.isOpened(), 'Cannot open video for writing'
 
-os.system(f'ffmpeg -i {opt.video_name} {opt.out_dir}/raw_images/{video_basename}-%06d.png')
+os.system(f'ffmpeg -i {opt.video_name} {savefolder}/raw_images/{video_basename}-%06d.png')
 
 
-files = os.listdir(f'{opt.out_dir}/raw_images')
+files = os.listdir(f'{savefolder}/raw_images')
 files.sort()
 
 img_path_list = []
@@ -199,7 +202,7 @@ img_path_list = []
 for file in tqdm(files):
     if not os.path.isdir(file) and file[-4:] in ['.jpg', '.png']:
 
-        img_path = os.path.join(opt.out_dir, 'raw_images', file)
+        img_path = os.path.join(savefolder, 'raw_images', file)
         img_path_list.append(img_path)
 
 prev_box = None
@@ -275,7 +278,7 @@ for img_path in tqdm(img_path_list):
 
         if opt.save_img:
             idx += 1
-            res_path = os.path.join(opt.out_dir, 'res_images', f'image-{idx:06d}.jpg')
+            res_path = os.path.join(savefolder, 'res_images', f'image-{idx:06d}.jpg')
             cv2.imwrite(res_path, image_vis)
         write_stream.write(image_vis)
 
@@ -290,7 +293,7 @@ for img_path in tqdm(img_path_list):
 
         if opt.save_img:
             res_path = os.path.join(
-                opt.out_dir, 'res_2d_images', f'image-{idx:06d}.jpg')
+                savefolder, 'res_2d_images', f'image-{idx:06d}.jpg')
             cv2.imwrite(res_path, bbox_img)
 
         if opt.save_pk:
@@ -343,7 +346,7 @@ if opt.save_pk:
         res_db[k] = np.stack(res_db[k])
         assert res_db[k].shape[0] == n_frames
 
-    with open(os.path.join(opt.out_dir, 'res.pk'), 'wb') as fid:
+    with open(os.path.join(savefolder, 'res.pk'), 'wb') as fid:
         pk.dump(res_db, fid)
 
 write_stream.release()

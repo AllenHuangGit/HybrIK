@@ -107,4 +107,6 @@ venv.bak/
 data
 data/
 exp
-model_files
+model_files/
+output/
+pretrained_models/
