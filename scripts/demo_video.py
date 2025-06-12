@@ -70,7 +70,7 @@ parser.add_argument('--gpu',
 #                     type=str)
 parser.add_argument('--video-name',
                     help='video name',
-                    default='',
+                    default='examples/moonwalk.mp4',
                     type=str)
 parser.add_argument('--out-dir',
                     help='output folder',
